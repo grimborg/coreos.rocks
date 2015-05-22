@@ -1,0 +1,743 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+<meta charset="utf-8">
+
+<title>Orchestrating Python Projects with CoreOS</title>
+
+<meta name="description" content="CoreOS, Etcd, Fleet, Kubernetes">
+<meta name="author" content="Òscar Vilaplana">
+
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, minimal-ui">
+
+<link rel="stylesheet" href="css/reveal.css">
+<link rel="stylesheet" href="css/theme/black.css" id="theme">
+<link rel="stylesheet" href="css/talk.css">
+
+<!-- Code syntax highlighting -->
+<link rel="stylesheet" href="lib/css/railscasts.css">
+
+<!-- Printing and PDF exports -->
+<script>
+var link = document.createElement( 'link' );
+link.rel = 'stylesheet';
+link.type = 'text/css';
+link.href = window.location.search.match( /print-pdf/gi ) ? 'css/print/pdf.css' : 'css/print/paper.css';
+document.getElementsByTagName( 'head' )[0].appendChild( link );
+</script>
+
+<!--[if lt IE 9]>
+<script src="lib/js/html5shiv.js"></script>
+<![endif]-->
+</head>
+
+<body>
+
+<div class="reveal">
+
+<!-- Any section element inside of this container is displayed as a slide -->
+<div class="slides">
+<section data-background="black">
+<h1>Orchestrating Python</h1>
+<img class="logo" src="img/coreos.png">
+<img class="logo" src="img/k8s.png">
+<img class="logo" src="img/python.png">
+<p>
+<small><a href="http://oscarvilaplana.cat">oscarvilaplana.cat</a> - <a href="http://twitter.com/grimborg">@grimborg</a> - <a href="http://pygrunn.org">PyGrunn 2015</a></small>
+</p>
+<aside class="notes">
+Last year: how to make your application scalable/distributable.
+This year: how to deploy it without making a mess.
+</aside>
+</section>
+
+
+<!-- <section data-background="#4d7e65" data-markdown>
+<script type="text/template">
+## repl(self)
+
+TODO
+
+SpotMe
+
+<aside class="notes">
+Distributed systems
+</aside>
+</script>
+</section> -->
+
+<section data-background="#4d7e65" data-background-transition="zoom" data-markdown>
+<script type="text/template">
+## Why?
+</script>
+</section>
+<section data-background="#4d7e65" data-background-transition="zoom" data-markdown>
+<script type="text/template">
+## Reliability
+
+- Static application environment.
+- Reliable deployments.
+- Easy and reliable continuous integration.
+- Self-healing
+</script>
+</section>
+<section data-background="#4d7e65" data-background-transition="zoom" data-markdown>
+<script type="text/template">
+## Portability
+
+- Repeatable, runnable actifact.
+</script>
+</section>
+<section data-background="#4d7e65" data-background-transition="zoom" data-markdown>
+<script type="text/template">
+## Loose coupling
+
+- Compose microservices.
+- Mix and extend.
+
+
+<aside class="notes">
+google starts > 2 billion containers per week
+</aside>
+</script>
+</section>
+
+<section data-background="#4d7e65" data-background-transition="zoom" data-markdown>
+<script type="text/template">
+## Cluster-first
+
+- Microservice architecture
+- Specialization dev/ops
+</script>
+</section>
+
+<section data-background="blue" data-background-transition="zoom">  
+<aside class="notes">
+take the "blue pill". abstract yourself from the horrible dark gory realities of infrastructure management. it's a muchnicer world. K8s brings 
+
+specialization of operations: operations deals only with the hardware, network, servers, and the developers work in a nice world where all of that is abstracted away. 
+</aside>
+</section>
+
+<section data-background="#4d7e65" data-background-transition="zoom">
+    <h2>Solve one problem</h2>
+<img src="img/playstation-coreos-paas.png">
+<aside class="notes">
+experience of the playstation development platform, which uses coreos
+
+solve 1 problem, not n problems
+
+overtime, every time you add a new service into your ecosystem you need custom tooling for it, and that gets more and more complex if you're not using a paas. 
+
+but if you are using a paas, because you're solving the same problem, just slight variations of it, it becomes asymptotically easier. 
+
+at some point someone wants to add a new service and its basically no effort for you as devopps to get that out the door.
+</aside>
+</section>
+<section data-background="#4d7e65" data-background-transition="zoom" data-markdown>
+<script type="text/template">
+## Demo
+
+- Deploy Database
+- Deploy Flask Application
+- Scale DB and App
+- Upgrade App
+</script>
+</section>
+<section data-background="img/rethinkdb-background.png" data-background-size="100%" data-background-color="#12282f" data-markdown>
+<script type="text/template">
+## Database
+
+- RethinkDB
+- 3 Replicas
+</script>
+</section>
+<section data-markdown>
+<script type="text/template">
+## Application
+
+- Flask
+- 3 Replicas
+</script>
+</section>
+<section data-markdown data-background-color="#12282f">
+<script type="text/template">
+## Talking to the DB
+
+Give a name to the RethinkDb service
+
+```yaml
+id: rethinkdb-driver
+```
+
+In the app:
+```python
+remodel.connection.pool.configure(
+db="mydb", host="rethinkdb-driver")
+```
+</script>
+</section>
+<section data-markdown>
+<script type="text/template">
+## Scaling up/down
+
+```nohighlight
+kubectl resize rc frontend-1.0 --replicas=4
+kubectl resize rc rethinkdb-driver-1.0 --replicas=4
+```
+</script>
+</section>
+
+<section data-markdown>
+<script type="text/template">
+## Rolling update
+
+Make a new config file for the new version.
+
+And update the system:
+
+```nohighlight
+kubectl rolling-update frontend -f frontend-v1.1-rc.yaml
+--update-period="3s"
+```
+</script>
+</section>
+
+
+<section data-markdown>
+<script type="text/template">
+## Application
+
+```
+remodel.connection.pool.configure(
+db="mydb", host=env.RETHINKDB_HOST, port=env.RETHINKDB_PORT
+)
+```
+</script>
+</section>
+
+
+<section data-markdown>
+<script type="text/template">
+# Dramatis Personae
+</script>
+</section>
+
+<section data-markdown>
+<script type="text/template">
+## CoreOS
+
+<img class="small" src="img/coreos.png">
+
+Simple OS.
+</script>
+</section>
+<section data-markdown>
+<script type="text/template">
+## CoreOS
+
+- Kernel + Docker + etcd + ...
+- Read-only root
+- No package manager
+- Self auto-updating
+</script>
+</section>
+
+<section data-markdown>
+<script type="text/template">
+## systemd
+
+```nohighlight
+$ cat pygrunn.service
+
+[Unit]
+description=PyGrunn Service
+
+[Service]
+Environment="LOCATION_CITY=Groningen"
+ExecStart=/usr/bin/launch-pygrunn-service
+CPUShares=512
+MemoryLimit=1G
+
+$ systemctl start pygrunn.service
+```
+
+
+</script>
+</section>
+<section data-markdown>
+<script type="text/template">
+## systemd
+
+- API-driven
+- Manages environment
+- Limits
+- No double fork, daemonization
+- No pid file
+- Logging (journald)
+- Socket activation
+
+<aside class="notes">
+- everything is in a cgroup
+- sets up the environment for the app to run
+- can set limits on cgroups (eg only x Mb of ram, or only allowed half of a cpu, etc)
+- api-driven
+- setting up the environment is complex: user, cgroup, environment vars, working directory, dependencies (this depends on that other service), resource limits…
+- when is a service stopped?
+- before: when there is no process with a pid that matches some secret pidfile.
+- systemd: when there are no processes running for this service
+- Socket activation: listen and launch the service when needed.
+</aside>
+</script>
+</section>
+<section data-markdown>
+<script type="text/template">
+## etcd
+
+<img class="small" src="img/etcd.png">
+
+Distributed configuration store.
+"Distributed /etc"
+
+Keep the global state.
+<aside class="notes">
+- we have global state (configuration, members of the cluster, schedules of each machine).
+</aside>
+</script>
+</section>
+
+<section data-markdown>
+<script type="text/template">
+## etcd
+
+
+- Atomic Compare-and-Swap.
+- Highly available
+- Sequentially consistent
+- Watchable
+- HTTP API
+- Reconfigurable at runtime
+- Partition tolerance
+
+<aside class="notes">
+- sequentially consistent: updates happen on the same order everywhere.
+- watchable: similar to inotify.
+- partition tolerance:
+- min size 3 nodes (we need majority). 
+- 2 nodes: writes will fail, reads may or may not work.
+</aside>
+</script>
+</section>
+
+<section data-markdown>
+<script type="text/template">
+## etcd
+
+```
+$ etcdctl set /pygrunn/current_year 2015
+2015
+$ etcdctl get /pygrunn/current_year 2015
+2015
+$ etcdctl rm /pygrunn/current_year
+
+$ etcdctl set /temporary-value "Some Value" --ttl 20
+
+$ etcdctl watch /pygrunn/servers --recursive
+```
+</script>
+</section>
+
+<!--section data-markdown>
+<script type="text/template">
+## systemd Units
+
+Resource that the system knows how to manage
+
+### Service
+
+Process managed by systemd.
+
+Handles restarts, logging, etc.
+
+### Socket Activation
+
+Listen and launch the service when needed.
+</script>
+</section-->
+
+<section data-markdown>
+<script type="text/template">
+## fleet
+
+"Distributed systemd"
+</script>
+</section>
+
+<section data-markdown>
+<script type="text/template">
+## fleet
+
+```
+$ systemd start pygrunn.service
+$ fleetctl start pygrunn.service
+```
+<aside class="notes">
+systemd takes care of the processes: if they die, they get restarted.
+fleet only reschedules if the machine dies.
+</aside>
+</script>
+</section>
+
+<section data-markdown>
+<script type="text/template">
+## fleet
+
+- Coordination accross the cluster
+- Decide here to run each unit
+- Abstract machines/applications.
+
+<aside class="notes">
+- coordination accross the cluster
+- where to run each unit
+- abstraction between machines and applications: you can’t keep caring about individual machines failing, when you reach a certain size that’s not sustainable.
+</aside>
+</script>
+</section>
+<section data-markdown>
+<script type="text/template">
+## fleet
+- Schedule: by tag, uuid, conflicts, requirements.
+
+```
+[X-Fleet]
+Conflicts=otherservice.service
+```
+</script>
+</section>
+
+<section data-markdown>
+<script type="text/template">
+# Service Discovery
+
+DIY
+
+Ambassador Pattern
+
+<aside class="notes">
+diy: you can just use etcd to register new processes.
+
+ambassador pattern: eg add a tcp proxy that figures out where the actual service is (maybe using etcd) and sends the traffic there
+
+there's a better way which we'll see
+</aside>
+</script>
+</section>
+
+
+<section data-markdown>
+<script type="text/template">
+## flannel
+
+"dhcp for containers"
+</script>
+</section>
+
+<section data-markdown>
+<script type="text/template">
+## flannel
+
+- Per-cluster subnet.
+- Per-machine (smaller) subnet.
+- Every container has an ip on this subnet.
+- Containers see eachother.
+- Configuration kept in etcd.
+
+<aside class="notes">
+- every machine has a subnet, and every container gets an ip in that subnet (each host has a /16). each cluster has a larger subnet.
+- port mapping makes service discovery more difficult: if everything has its ip address _and_ port, there’s extra logic needed to figure out also the port.
+- containers can see each other, they’re not relying on the nating of the docker process itself, but on the nating done by flannel.
+- this encapsulation is happening at layer 3, not 2 (you won’t be able to use multicast or send an arp command and see the other containers).
+- why not use openvswitch?
+- it requires a control plane, we’d have to write etcd backends for openvswitch, and getting into technology which only few people understand.
+- why not use weave?
+- when flannel was started weave was starting and not very widely known
+- coreos aims to give you a similar experience irregardless of the cloud provider. (eg it’s easy to create a vpc on amazon, but not on other providers).
+- performance cost: there’s some (there are metrics online). about 3%.
+</aside>
+</script>
+</section>
+
+<section data-markdown>
+<script type="text/template">
+## Kubernetes
+
+<img class="small" src="img/k8s.png">
+
+Process manager for cloud computing
+
+<aside class="notes">
+master/slave (minion)
+</aside>
+</script>
+</section>
+
+<section data-markdown>
+<script type="text/template">
+### Pods
+
+- Settings in a template.
+- Unit of scheduling.
+- Defines image, resources.
+- Reusable
+- Repeatable
+
+<aside class="notes">
+Container or group of them.
+They live and die together.
+They integrate very tightly.
+
+Defines which docker image to run, which resources it needs.
+
+</script>
+</section>
+
+<section data-markdown>
+<script type="text/template">
+### Labels
+
+- Key-value pars
+- Baked into most APIs
+- Metadata with semantic meaning.
+- Membership identifiers.
+
+<aside class="notes">
+you can eg label your pods with arbitrary labels, for example `env=prod` and then ask questions about that (eg how many frontends do I have in production pods am I running?) “give me the things doing X and make them do this, wherever they are scheduled”.
+</aside>
+</script>
+</section>
+
+<section data-markdown>
+<script type="text/template">
+### Replication Controllers
+
+- Creates pods from a template
+- Ensures exactly the desired number of pods is running.
+- Rolling upgrades.
+
+<aside class="notes">
+Declarative: say “I want to always run 5 copies of this Pod” and the Replication Controller will make sure it does. If one dies, it will start a new one.
+
+When you want more or less, you change the definition and it adapts.
+
+Benefits
+
+- Restarts Pods, desired state
+
+- Fine-grained control for scaling
+</aside>
+</script>
+
+</section>
+<section data-markdown>
+<script type="text/template">
+### Services
+
+Service discovery for pods
+
+- IP per service
+- Load balancing (round robin)
+- Dynamic backend based on label query.
+</script>
+</section>
+
+<section>
+<h3>Pod example: nginx</h3>
+<img src="img/example-pod.png">
+</section>
+
+<section>
+<h2>Demo</h2>
+</section>
+
+
+<section data-markdown>
+<script type="text/template">
+## Development
+</script>
+</section>
+
+<section data-markdown>
+<script type="text/template">
+
+## Dev vs Prod
+
+- Docker
+- Network
+- Etcd
+- Fleet
+- Versions?
+
+<aside class="notes">
+docker helps on execution, but what about network? other resources? etcd, fleet installed?
+
+is everything up to date? matches prod versions?
+</aside>
+</script>
+</section>
+
+<section data-markdown>
+<script type="text/template">
+## Dev vs Prod
+
+- Load balancing, monitoring, log mining
+- Cluster management
+- Config management
+- Deployment tools
+</script>
+</section>
+
+<section data-markdown>
+<script type="text/template">
+### Just another environment
+<aside class="notes">
+You can deploy to many environments.
+
+Dev is just another environment.
+</aside>
+</script>
+</section>
+
+<section data-markdown>
+<script type="text/template">
+## Development
+
+- Your favorite dev environment
+- Tools (git, text editor, test runner)
+- Easy to re-create
+
+<aside class="notes">
+But we still wath our favorite dev environment, our editor, etc.
+
+This cannot be part of the production container.
+
+You also want it to be easy to recreate in case things get screwed up.
+
+I checked how the PlayStation developers do it.
+</aside>
+</script>
+</section>
+
+<section data-markdown>
+<script type="text/template">
+## Dev container
+
+- Dev image running on coreos.
+- Systemd nspawn.
+
+</script>
+</section>
+
+<section data-markdown>
+<script type="text/template">
+## nspawn
+
+- chroot-like
+- Initially used for testing
+- More constrained than chroot, less than docker
+- Access to the  PID/network/ipc/hostname namespaces
+- Persistent filesystem (no btrfs)
+- Easier bind mounting from real root
+- Bind docker.sock and client.
+
+<aside class="notes">
+to access docker, bind in the docker.sock and the client: ensure client/daemon parity. just 1 file to mount (docker is statically compiled)
+</aside>
+</script>
+</section>
+
+<section>
+<h3>Workspace</h3>
+<img src="img/mounting-workspace.png">
+<aside class="notes">
+mount the workspace outside (on the root), so that the paths are the same.
+
+when you do docker run, you need to bind to the paths where the code is (outside of systemd nspawn area), and it's easy to make mistakes. having the paths the same makes it easier to get it right.
+</aside>
+</section>
+
+<section data-markdown>
+<script type="text/template">
+## IDE
+
+- Source on dev host: container is slow.
+- Source on container host: IDE is slow.
+
+<aside class="notes">
+some IDEs get very slow if the source is in another host.
+and containers get slower if the source is in another host.
+</aside>
+
+</script>
+</section>
+
+<section>
+<h3>Source Sync</h3>
+<img src="img/syncing-source.png">
+<aside class="notes">
+virtualbox orders of magnitude slower
+nfs may be best choice for osx
+rsync tricky to set up, depending on version
+</aside>
+</section>
+
+<section>
+    <h2>Q&amp;A</h2>
+</section>
+
+<section>
+    <h2>Thanks!</h2>
+<img class="logo" src="img/k8s.png">
+<p><a href="http://coreos.rocks/pygrunn2015">coreos.rocks/pygrunn2015</a></p>
+<p><a href="http://github.com/grimborg/coreos-talk">github.com/grimborg/coreos-talk</a></p>
+<p><a href="mailto:dev@oscarvilaplana.cat">dev@oscarvilaplana.cat</a></p>
+<p><a href="http://twitter.com/grimborg">@grimborg</a></p>
+</section>
+
+</div>
+
+</div>
+
+<script src="lib/js/head.min.js"></script>
+<script src="js/reveal.js"></script>
+
+<script>
+
+// Full list of configuration options available at:
+// https://github.com/hakimel/reveal.js#configuration
+Reveal.initialize({
+controls: true,
+progress: true,
+history: true,
+center: true,
+
+transition: 'slide', // none/fade/slide/convex/concave/zoom
+
+// Optional reveal.js plugins
+dependencies: [
+{ src: 'lib/js/classList.js', condition: function() { return !document.body.classList; } },
+{ src: 'plugin/markdown/marked.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+{ src: 'plugin/markdown/markdown.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+{ src: 'plugin/highlight/highlight.js', async: true, condition: function() { return !!document.querySelector( 'pre code' ); }, callback: function() { hljs.initHighlightingOnLoad(); } },
+{ src: 'plugin/zoom-js/zoom.js', async: true },
+{ src: 'plugin/notes/notes.js', async: true }
+]
+});
+
+</script>
+
+</body>
+</html>

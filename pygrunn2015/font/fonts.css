@@ -1,0 +1,18 @@
+@font-face {
+  font-family: 'IM Fell English SC';
+  font-style: normal;
+  font-weight: 400;
+  src: local('IM FELL English SC'), local('IM_FELL_English_SC'), url(http://fonts.gstatic.com/s/imfellenglishsc/v6/h3Tn6yWfw4b5qaLD1RWvz9gX5f6-V0DImePmAcKHNfQ.ttf) format('truetype');
+}
+@font-face {
+  font-family: 'Mountains of Christmas';
+  font-style: normal;
+  font-weight: 400;
+  src: local('Mountains of Christmas'), local('MountainsofChristmas-Regular'), url(http://fonts.gstatic.com/s/mountainsofchristmas/v8/dVGBFPwd6G44IWDbQtPew1bt-oIll-RyBOVQqGBP3Ww.ttf) format('truetype');
+}
+@font-face {
+  font-family: 'Pompiere';
+  font-style: normal;
+  font-weight: 400;
+  src: local('Pompiere '), local('Pompiere-Regular'), url(http://fonts.gstatic.com/s/pompiere/v6/Y3DPP8H_-3TwPsh5FkDMHfesZW2xOQ-xsNqO47m55DA.ttf) format('truetype');
+}
