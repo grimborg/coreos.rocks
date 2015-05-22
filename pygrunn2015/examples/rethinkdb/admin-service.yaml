@@ -1,0 +1,12 @@
+apiVersion: v1beta1
+namespace: rethinkdb
+kind: Service
+id: rethinkdb-admin
+port: 8080
+containerPort: admin-port
+labels:
+  db: rethinkdb
+selector:
+  db: rethinkdb
+  role: admin
+createExternalLoadBalancer: true

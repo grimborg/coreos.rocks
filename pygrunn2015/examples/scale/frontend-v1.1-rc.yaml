@@ -1,0 +1,26 @@
+id: "frontend-v1.1"
+kind: "ReplicationController"
+apiVersion: "v1beta3"
+metadata: 
+  name: "frontend-v1.1"
+  labels: 
+    name: "frontend"
+    version: "v1.1"
+spec: 
+  replicas: 3
+  selector: 
+    name: "frontend"
+    version: "v1.1"
+  template: 
+    metadata: 
+      labels: 
+        name: "frontend"
+        version: "v1.1"
+    spec: 
+      containers: 
+        - name: "frontend"
+          image: "tutum.co/grimborg/coreos-talk-frontend:1.1"
+          ports: 
+            - containerPort: 5000
+              protocol: "TCP"
+

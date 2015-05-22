@@ -1,0 +1,13 @@
+kind: "Service"
+apiVersion: "v1beta3"
+metadata: 
+  name: "dbfrontend"
+  labels: 
+    name: "dbfrontend"
+spec: 
+  ports: 
+    - port: 5000
+      targetPort: 5000
+      protocol: "TCP"
+  selector: 
+    name: "dbfrontend"

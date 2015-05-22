@@ -1,0 +1,2 @@
+flask
+rethinkdb<1.7

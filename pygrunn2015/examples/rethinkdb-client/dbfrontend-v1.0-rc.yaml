@@ -1,0 +1,25 @@
+id: "dbfrontend-v1.0"
+kind: "ReplicationController"
+apiVersion: "v1beta3"
+metadata: 
+  name: "dbfrontend-v1.0"
+  labels: 
+    name: "dbfrontend"
+    version: "v1.0"
+spec: 
+  replicas: 3
+  selector: 
+    name: "dbfrontend"
+    version: "v1.0"
+  template: 
+    metadata: 
+      labels: 
+        name: "dbfrontend"
+        version: "v1.0"
+    spec: 
+      containers: 
+        - name: "dbfrontend"
+          image: "tutum.co/grimborg/coreos-talk-dbfrontend:1.0"
+          ports: 
+            - containerPort: 5000
+              protocol: "TCP"
